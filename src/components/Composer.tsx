@@ -27,7 +27,7 @@ export const Composer: React.FC<ComposerProps> = ({
   isStreaming = false,
   disabled = false,
   initialText = '',
-  placeholder = 'Message Hermes or ask to perform a task...',
+  placeholder = 'Ketik pesan...',
   className = '',
 }) => {
   const [text, setText] = useState(initialText)
@@ -188,7 +188,7 @@ export const Composer: React.FC<ComposerProps> = ({
                   type="button"
                   onClick={() => removeAttachment(idx)}
                   className="flex h-5 w-5 items-center justify-center rounded text-[#9ca3af] hover:text-[#f3f4f6]"
-                  aria-label={`Remove attachment ${att.name}`}
+                  aria-label={`Hapus lampiran ${att.name}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -211,7 +211,7 @@ export const Composer: React.FC<ComposerProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-[#9ca3af] hover:bg-[#1a1c20] hover:text-[#f3f4f6] transition-colors"
-            aria-label="Attach file"
+            aria-label="Lampirkan berkas"
           >
             <Paperclip className="h-4 w-4" />
           </button>
@@ -224,7 +224,7 @@ export const Composer: React.FC<ComposerProps> = ({
                 ? 'bg-rose-500/20 text-rose-400 animate-pulse'
                 : 'text-[#9ca3af] hover:bg-[#1a1c20] hover:text-[#f3f4f6]'
             }`}
-            aria-label={isRecording ? 'Stop voice recording' : 'Start push-to-talk voice recording'}
+            aria-label={isRecording ? 'Hentikan rekaman suara' : 'Mulai rekaman suara'}
           >
             {isTranscribing ? (
               <Loader2 className="h-4 w-4 animate-spin text-[#ff6347]" />
@@ -242,9 +242,9 @@ export const Composer: React.FC<ComposerProps> = ({
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder={isRecording ? 'Listening to voice...' : placeholder}
+            placeholder={isRecording ? 'Mendengarkan...' : placeholder}
             className="max-h-32 min-h-[38px] flex-1 resize-none bg-transparent py-2 px-1 text-sm text-[#f3f4f6] placeholder-[#9ca3af] focus:outline-none leading-relaxed"
-            aria-label="Prompt composer input"
+            aria-label="Input pesan prompt"
           />
 
           {isStreaming ? (
@@ -252,7 +252,7 @@ export const Composer: React.FC<ComposerProps> = ({
               type="button"
               onClick={onStop}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md bg-[#ff6347] text-[#090a0b] hover:bg-[#ff7b63] active:scale-95 transition-all shadow-md"
-              aria-label="Stop streaming response"
+              aria-label="Hentikan respons streaming"
             >
               <Square className="h-4 w-4 fill-current stroke-none" />
             </button>
@@ -266,7 +266,7 @@ export const Composer: React.FC<ComposerProps> = ({
                   ? 'bg-[#ff6347] text-[#090a0b] hover:bg-[#ff7b63] active:scale-95 shadow-md cursor-pointer'
                   : 'bg-[#1a1c20] text-[#9ca3af]/40 cursor-not-allowed border border-[#23262d]'
               }`}
-              aria-label="Send message"
+              aria-label="Kirim pesan"
             >
               <Send className="h-4 w-4" />
             </button>

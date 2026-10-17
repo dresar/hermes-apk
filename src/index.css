@@ -20,7 +20,7 @@
 
 html,
 body {
-  height: var(--viewport-height, 100dvh);
+  height: 100dvh;
   margin: 0;
   padding: 0;
   background-color: var(--bg-canvas);
@@ -30,9 +30,10 @@ body {
 }
 
 #root {
-  height: var(--viewport-height, 100dvh);
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .safe-area {

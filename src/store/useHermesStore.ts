@@ -76,9 +76,9 @@ export interface HermesActions {
 export type HermesStore = HermesState & HermesActions
 
 const initialConfig: GatewayConfig = {
-  host: '127.0.0.1',
-  port: 9119,
-  useSsl: false,
+  host: 'hermes.agentai.my.id',
+  port: 443,
+  useSsl: true,
 }
 
 const initialActivePet: ActivePet = {
@@ -147,49 +147,67 @@ export const useHermesStore = create<HermesStore>((set) => ({
     })),
 
   startStreaming: (turnId) =>
-    set({
-      activeTurnStreamingState: {
-        reasoningBuffer: '',
-        messageBuffer: '',
-        isStreaming: true,
-        currentTurnId: turnId,
-      },
+    set((state) => {
+      const existingIndex = state.turns.findIndex((t) => t.id === turnId)
+      let turns: Turn[]
+      if (existingIndex >= 0) {
+        turns = [...state.turns]
+        turns[existingIndex] = {
+          ...turns[existingIndex],
+          role: 'assistant',
+        }
+      } else {
+        const newTurn: Turn = {
+          id: turnId,
+          role: 'assistant',
+          content: '',
+          reasoning: '',
+          timestamp: Date.now(),
+        }
+        turns = [...state.turns, newTurn]
+      }
+      return {
+        turns,
+        activeTurnStreamingState: {
+          reasoningBuffer: '',
+          messageBuffer: '',
+          isStreaming: true,
+          currentTurnId: turnId,
+        },
+      }
     }),
 
   appendReasoningDelta: (delta) =>
     set((state) => {
       const newBuffer = state.activeTurnStreamingState.reasoningBuffer + delta
-      const turnId = state.activeTurnStreamingState.currentTurnId
-      if (!turnId) {
-        return {
-          activeTurnStreamingState: {
-            ...state.activeTurnStreamingState,
-            reasoningBuffer: newBuffer,
-          },
-        }
-      }
+      const turnId = state.activeTurnStreamingState.currentTurnId || `turn_${Date.now()}`
 
       const existingIndex = state.turns.findIndex((t) => t.id === turnId)
+      let turns: Turn[]
       if (existingIndex >= 0) {
-        const updatedTurns = [...state.turns]
-        const existing = updatedTurns[existingIndex]
-        updatedTurns[existingIndex] = {
+        turns = [...state.turns]
+        const existing = turns[existingIndex]
+        turns[existingIndex] = {
           ...existing,
           reasoning: newBuffer,
         }
-        return {
-          turns: updatedTurns,
-          activeTurnStreamingState: {
-            ...state.activeTurnStreamingState,
-            reasoningBuffer: newBuffer,
-          },
+      } else {
+        const newTurn: Turn = {
+          id: turnId,
+          role: 'assistant',
+          content: state.activeTurnStreamingState.messageBuffer,
+          reasoning: newBuffer,
+          timestamp: Date.now(),
         }
+        turns = [...state.turns, newTurn]
       }
 
       return {
+        turns,
         activeTurnStreamingState: {
           ...state.activeTurnStreamingState,
           reasoningBuffer: newBuffer,
+          currentTurnId: turnId,
         },
       }
     }),
@@ -197,50 +215,38 @@ export const useHermesStore = create<HermesStore>((set) => ({
   appendMessageDelta: (delta, isContinuation) =>
     set((state) => {
       const newBuffer = state.activeTurnStreamingState.messageBuffer + delta
-      const turnId = state.activeTurnStreamingState.currentTurnId
-      if (!turnId) {
-        return {
-          activeTurnStreamingState: {
-            ...state.activeTurnStreamingState,
-            messageBuffer: newBuffer,
-          },
-        }
-      }
+      const turnId = state.activeTurnStreamingState.currentTurnId || `turn_${Date.now()}`
 
       const existingIndex = state.turns.findIndex((t) => t.id === turnId)
+      let turns: Turn[]
       if (existingIndex >= 0) {
-        const updatedTurns = [...state.turns]
-        const existing = updatedTurns[existingIndex]
-        updatedTurns[existingIndex] = {
+        turns = [...state.turns]
+        const existing = turns[existingIndex]
+        turns[existingIndex] = {
           ...existing,
-          content: existing.content + delta,
+          content: newBuffer,
           _length_continuation_nudge: isContinuation
             ? true
             : existing._length_continuation_nudge,
         }
-        return {
-          turns: updatedTurns,
-          activeTurnStreamingState: {
-            ...state.activeTurnStreamingState,
-            messageBuffer: newBuffer,
-          },
+      } else {
+        const newTurn: Turn = {
+          id: turnId,
+          role: 'assistant',
+          content: newBuffer,
+          reasoning: state.activeTurnStreamingState.reasoningBuffer,
+          timestamp: Date.now(),
+          _length_continuation_nudge: Boolean(isContinuation),
         }
-      }
-
-      const newTurn: Turn = {
-        id: turnId,
-        role: 'assistant',
-        content: newBuffer,
-        reasoning: state.activeTurnStreamingState.reasoningBuffer,
-        timestamp: Date.now(),
-        _length_continuation_nudge: Boolean(isContinuation),
+        turns = [...state.turns, newTurn]
       }
 
       return {
-        turns: [...state.turns, newTurn],
+        turns,
         activeTurnStreamingState: {
           ...state.activeTurnStreamingState,
           messageBuffer: newBuffer,
+          currentTurnId: turnId,
         },
       }
     }),
@@ -248,40 +254,64 @@ export const useHermesStore = create<HermesStore>((set) => ({
   finishStreaming: (completeText, reasoning) =>
     set((state) => {
       const turnId = state.activeTurnStreamingState.currentTurnId
-      let updatedTurns = state.turns
+      let turns = state.turns
+
+      const resolvedContent =
+        completeText !== undefined
+          ? completeText
+          : state.activeTurnStreamingState.messageBuffer
+      const resolvedReasoning =
+        reasoning !== undefined
+          ? reasoning
+          : state.activeTurnStreamingState.reasoningBuffer
 
       if (turnId) {
         const existingIndex = state.turns.findIndex((t) => t.id === turnId)
         if (existingIndex >= 0) {
-          const existing = state.turns[existingIndex]
-          updatedTurns = [...state.turns]
-          updatedTurns[existingIndex] = {
+          turns = [...state.turns]
+          const existing = turns[existingIndex]
+          turns[existingIndex] = {
             ...existing,
-            content: completeText !== undefined ? completeText : existing.content,
-            reasoning: reasoning !== undefined ? reasoning : existing.reasoning,
+            content:
+              completeText !== undefined
+                ? completeText
+                : (existing.content || resolvedContent),
+            reasoning:
+              reasoning !== undefined
+                ? reasoning
+                : (existing.reasoning || resolvedReasoning),
           }
         } else {
-          const content =
-            completeText !== undefined
-              ? completeText
-              : state.activeTurnStreamingState.messageBuffer
-          const resReason =
-            reasoning !== undefined
-              ? reasoning
-              : state.activeTurnStreamingState.reasoningBuffer
           const newTurn: Turn = {
             id: turnId,
             role: 'assistant',
-            content,
-            reasoning: resReason,
+            content: resolvedContent,
+            reasoning: resolvedReasoning,
             timestamp: Date.now(),
           }
-          updatedTurns = [...state.turns, newTurn]
+          turns = [...state.turns, newTurn]
+        }
+      } else if (state.turns.length > 0) {
+        const lastIndex = state.turns.length - 1
+        const lastTurn = state.turns[lastIndex]
+        if (lastTurn.role === 'assistant') {
+          turns = [...state.turns]
+          turns[lastIndex] = {
+            ...lastTurn,
+            content:
+              completeText !== undefined
+                ? completeText
+                : (lastTurn.content || resolvedContent),
+            reasoning:
+              reasoning !== undefined
+                ? reasoning
+                : (lastTurn.reasoning || resolvedReasoning),
+          }
         }
       }
 
       return {
-        turns: updatedTurns,
+        turns,
         activeTurnStreamingState: {
           reasoningBuffer: '',
           messageBuffer: '',
