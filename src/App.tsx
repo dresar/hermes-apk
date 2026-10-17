@@ -62,28 +62,28 @@ export default function App() {
         token: cfg.token,
         autoReconnect: true,
       })
-      .catch(() => {})
-
-    hermesClient
-      .sessionList()
-      .then((list) => {
-        const raw = Array.isArray(list) ? list : (list as any)?.sessions
-        const validList = Array.isArray(raw) ? raw : []
-        if (validList.length > 0) {
+      .then(async () => {
+        try {
+          const list = await hermesClient.sessionList()
+          const raw = Array.isArray(list) ? list : (list as any)?.sessions
+          const validList = Array.isArray(raw) ? raw : []
           useHermesStore.getState().setSessions(validList)
-          const currentActive = useHermesStore.getState().activeSessionId
-          if (!currentActive) {
+          if (validList.length > 0) {
             const firstId = validList[0].session_id
             useHermesStore.getState().setActiveSessionId(firstId)
-            hermesClient.sessionResume(firstId).catch(() => {})
+            await hermesClient.sessionResume(firstId)
+          } else {
+            const newSess = await hermesClient.sessionCreate({ title: 'Sesi Baru' })
+            if (newSess?.session_id) {
+              useHermesStore.getState().setActiveSessionId(newSess.session_id)
+              useHermesStore.getState().setSessions([newSess])
+            }
           }
-        } else {
-          useHermesStore.getState().setSessions([])
+        } catch {
+          void 0
         }
       })
-      .catch(() => {
-        useHermesStore.getState().setSessions([])
-      })
+      .catch(() => {})
 
     return () => {
       hermesClient.disconnect()
@@ -91,6 +91,7 @@ export default function App() {
   }, [])
 
   const handleSelectSession = useCallback((sessionId: string) => {
+    useHermesStore.getState().resetSessionState()
     useHermesStore.getState().setActiveSessionId(sessionId)
     hermesClient.sessionResume(sessionId).catch(() => {})
   }, [])
@@ -104,7 +105,7 @@ export default function App() {
         useHermesStore.getState().setActiveSessionId(newSession.session_id)
         const updatedList = await hermesClient.sessionList()
         const raw = Array.isArray(updatedList) ? updatedList : (updatedList as any)?.sessions
-        useHermesStore.getState().setSessions(Array.isArray(raw) ? raw : [])
+        useHermesStore.getState().setSessions(Array.isArray(raw) ? raw : [newSession])
       }
     } catch {
       const fallbackId = `sess_${Date.now()}`
@@ -131,7 +132,7 @@ export default function App() {
       }
 
       let currentSid = useHermesStore.getState().activeSessionId
-      if (!currentSid) {
+      if (!currentSid || currentSid.startsWith('sess_')) {
         try {
           const newSession = await hermesClient.sessionCreate({
             title: text.slice(0, 24) || 'Sesi Baru',
@@ -140,7 +141,7 @@ export default function App() {
           useHermesStore.getState().setActiveSessionId(currentSid)
           const updatedList = await hermesClient.sessionList()
           const raw = Array.isArray(updatedList) ? updatedList : (updatedList as any)?.sessions
-          useHermesStore.getState().setSessions(Array.isArray(raw) ? raw : [])
+          useHermesStore.getState().setSessions(Array.isArray(raw) ? raw : [newSession])
         } catch {
           currentSid = `sess_${Date.now()}`
           useHermesStore.getState().setActiveSessionId(currentSid)
@@ -155,10 +156,31 @@ export default function App() {
       }
       useHermesStore.getState().addTurn(userTurn)
 
+      const assistantTurnId = `asst_${Date.now()}`
+      useHermesStore.getState().startStreaming(assistantTurnId)
+
       try {
         await hermesClient.promptSubmit(currentSid, text, attachments)
       } catch {
-        void 0
+        try {
+          const recovered = await hermesClient.sessionCreate({
+            title: text.slice(0, 24) || 'Sesi Baru',
+          })
+          if (recovered?.session_id) {
+            currentSid = recovered.session_id
+            useHermesStore.getState().setActiveSessionId(currentSid)
+            const updatedList = await hermesClient.sessionList()
+            const raw = Array.isArray(updatedList) ? updatedList : (updatedList as any)?.sessions
+            useHermesStore.getState().setSessions(Array.isArray(raw) ? raw : [recovered])
+            await hermesClient.promptSubmit(currentSid, text, attachments)
+            return
+          }
+        } catch {
+          void 0
+        }
+        useHermesStore
+          .getState()
+          .finishStreaming('Terjadi kendala saat menghubungkan ke gateway. Silakan coba lagi.')
       }
     },
     []

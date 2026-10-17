@@ -30,6 +30,7 @@ import type {
   StatusUpdatePayload,
   ToolCompletePayload,
   ToolStartPayload,
+  Turn,
 } from './types'
 import { useHermesStore } from '../store/useHermesStore'
 
@@ -653,6 +654,9 @@ export class HermesClient {
       useHermesStore.getState().startStreaming(turnId)
       useHermesStore.getState().setPetState('review')
     } else if (type === 'reasoning.delta' || type === 'thinking.delta') {
+      if (!useHermesStore.getState().activeTurnStreamingState.isStreaming) {
+        useHermesStore.getState().startStreaming(`turn_${Date.now()}`)
+      }
       const p = payload as Partial<ReasoningDeltaPayload> | undefined
       const rec = payload as Record<string, unknown> | undefined
       const delta =
@@ -664,8 +668,16 @@ export class HermesClient {
       useHermesStore.getState().appendReasoningDelta(delta)
       useHermesStore.getState().setPetState('review')
     } else if (type === 'message.delta') {
+      if (!useHermesStore.getState().activeTurnStreamingState.isStreaming) {
+        useHermesStore.getState().startStreaming(`turn_${Date.now()}`)
+      }
       const p = payload as Partial<MessageDeltaPayload> | undefined
-      const delta = p?.text ?? ''
+      const rec = payload as Record<string, unknown> | undefined
+      const delta =
+        (typeof payload === 'string' ? payload : undefined) ??
+        p?.text ??
+        (typeof rec?.delta === 'string' ? rec.delta : undefined) ??
+        ''
       const isContinuation = Boolean(p?._length_continuation_nudge)
       this.messageBuffer += delta
       useHermesStore.getState().appendMessageDelta(delta, isContinuation)
@@ -863,22 +875,29 @@ export class HermesClient {
     const res = await this.sendRequest<Session>('session.create', params)
     if (res && res.session_id) {
       this.setActiveSessionId(res.session_id)
+      useHermesStore.getState().setActiveSessionId(res.session_id)
     }
     return res
   }
 
-  public async sessionResume(
-    sessionId: string
-  ): Promise<ResumeSessionResult> {
+  public async sessionResume(sessionId: string): Promise<ResumeSessionResult> {
     this.setActiveSessionId(sessionId)
-    const res = await this.sendRequest<ResumeSessionResult>('session.resume', {
+    const res = await this.sendRequest<any>('session.resume', {
       session_id: sessionId,
     })
-    if (res && res.session) {
-      useHermesStore.getState().setActiveSessionId(res.session.session_id)
-      if (Array.isArray(res.turns)) {
-        useHermesStore.getState().setTurns(res.turns)
-      }
+    if (res) {
+      const runtimeSid = res.session_id || sessionId
+      this.setActiveSessionId(runtimeSid)
+      useHermesStore.getState().setActiveSessionId(runtimeSid)
+      const rawMessages = Array.isArray(res.messages) ? res.messages : (res.turns ?? [])
+      const turns: Turn[] = rawMessages.map((m: any, idx: number) => ({
+        id: m.row_id ? `turn_${m.row_id}` : `turn_${idx}_${Date.now()}`,
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.text || m.content || '',
+        reasoning: m.reasoning || '',
+        timestamp: m.timestamp ? Math.floor(m.timestamp * 1000) : Date.now(),
+      }))
+      useHermesStore.getState().setTurns(turns)
     }
     return res
   }
