@@ -4,6 +4,7 @@ import {
   Check,
   Bot,
   Clock,
+  Loader2,
 } from 'lucide-react'
 import type { Turn, ToolCall } from '../api/types'
 import { ThinkingDrawer } from './ThinkingDrawer'
@@ -322,13 +323,27 @@ export const MessageTurn: React.FC<MessageTurnProps> = ({
           </div>
         )}
 
+        {isStreaming && !turn.content && (!toolCallsToRender || toolCallsToRender.length === 0) && (
+          <div className="flex items-center gap-2 py-1.5 text-xs text-[#ff6347]">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span className="font-medium animate-pulse">
+              {effectiveReasoning ? 'Sedang berpikir...' : 'Mengetik...'}
+            </span>
+            <span className="inline-flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff6347] animate-bounce [animation-delay:-0.3s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff6347] animate-bounce [animation-delay:-0.15s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff6347] animate-bounce" />
+            </span>
+          </div>
+        )}
+
         {turn.content && (
           <div className="text-sm leading-relaxed text-[#f3f4f6] break-words">
             <MarkdownBlock content={turn.content} />
           </div>
         )}
 
-        {isStreaming && (
+        {isStreaming && turn.content && (
           <span
             className="inline-block w-1.5 h-4 ml-0.5 bg-[#ff6347] animate-pulse align-middle"
             aria-label="Streaming response in progress"
