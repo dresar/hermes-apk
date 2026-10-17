@@ -138,55 +138,57 @@ export const Transcript: React.FC<TranscriptProps> = ({
         aria-label="Riwayat percakapan"
         className="flex-1 overflow-y-auto overflow-x-hidden pt-16 pb-4 scroll-smooth"
       >
-        {allTurns.length === 0 && (
-          <div className="flex flex-col items-center justify-center min-h-[55vh] px-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#23262d] bg-[#121316] text-[#ff6347] shadow-lg mb-3">
-              <Bot className="h-6 w-6" />
+        <div className="max-w-3xl mx-auto w-full px-3 sm:px-4">
+          {allTurns.length === 0 && (
+            <div className="flex flex-col items-center justify-center min-h-[55vh] px-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#23262d] bg-[#121316] text-[#ff6347] shadow-lg mb-3">
+                <Bot className="h-6 w-6" />
+              </div>
+              <h2 className="text-base font-semibold tracking-tight text-[#f3f4f6]">
+                Hermes
+              </h2>
+              <p className="mt-1 text-xs text-[#9ca3af]">
+                Siap membantu Anda.
+              </p>
+
+              <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-sm">
+                {STARTER_PROMPTS.map((item, idx) => {
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => onSelectPrompt?.(item.prompt)}
+                      className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#23262d] bg-[#121316] px-3.5 py-1.5 text-xs text-[#f3f4f6] hover:border-[#ff6347]/40 hover:bg-[#1a1c20] transition-colors cursor-pointer active:scale-95"
+                      aria-label={`Pilih ${item.title}`}
+                    >
+                      <Icon className="h-3.5 w-3.5 text-[#ff6347]" />
+                      <span>{item.title}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <h2 className="text-base font-semibold tracking-tight text-[#f3f4f6]">
-              Hermes
-            </h2>
-            <p className="mt-1 text-xs text-[#9ca3af]">
-              Siap membantu Anda.
-            </p>
+          )}
 
-            <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-sm">
-              {STARTER_PROMPTS.map((item, idx) => {
-                const Icon = item.icon
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => onSelectPrompt?.(item.prompt)}
-                    className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#23262d] bg-[#121316] px-3.5 py-1.5 text-xs text-[#f3f4f6] hover:border-[#ff6347]/40 hover:bg-[#1a1c20] transition-colors cursor-pointer active:scale-95"
-                    aria-label={`Pilih ${item.title}`}
-                  >
-                    <Icon className="h-3.5 w-3.5 text-[#ff6347]" />
-                    <span>{item.title}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
+          {allTurns.map((turn) => {
+            const isThisTurnStreaming = isStreaming && turn.id === streamingTurnId
+            return (
+              <MessageTurn
+                key={turn.id}
+                turn={turn}
+                isStreaming={isThisTurnStreaming}
+                streamingReasoning={
+                  isThisTurnStreaming ? streamingState?.reasoningBuffer : undefined
+                }
+                activeToolCalls={isThisTurnStreaming ? toolCalls : undefined}
+                modelName={modelName}
+              />
+            )
+          })}
 
-        {allTurns.map((turn) => {
-          const isThisTurnStreaming = isStreaming && turn.id === streamingTurnId
-          return (
-            <MessageTurn
-              key={turn.id}
-              turn={turn}
-              isStreaming={isThisTurnStreaming}
-              streamingReasoning={
-                isThisTurnStreaming ? streamingState?.reasoningBuffer : undefined
-              }
-              activeToolCalls={isThisTurnStreaming ? toolCalls : undefined}
-              modelName={modelName}
-            />
-          )
-        })}
-
-        <div ref={bottomAnchorRef} className="h-2 w-full" aria-hidden="true" />
+          <div ref={bottomAnchorRef} className="h-2 w-full" aria-hidden="true" />
+        </div>
       </div>
 
       {showScrollBottom && (
