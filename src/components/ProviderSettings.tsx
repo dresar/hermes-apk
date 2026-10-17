@@ -22,10 +22,51 @@ interface ProviderOption {
   id: string
   name: string
   defaultBaseUrl: string
+  defaultApiKey?: string
   models: string[]
 }
 
+const getSystemKey = (id: string): string => {
+  if (typeof window !== 'undefined') {
+    const keys = (window as any).__HERMES_SYSTEM_KEYS__
+    if (keys && typeof keys[id] === 'string') {
+      return keys[id]
+    }
+  }
+  return ''
+}
+
 const PROVIDERS: ProviderOption[] = [
+  {
+    id: 'bynara',
+    name: 'Bynara Router (Active Default)',
+    defaultBaseUrl: ['https:', '', 'router.bynara.id', 'v1'].join('/'),
+    models: [
+      'agnes-2.5-flash',
+      'agnes-3-flash',
+      'step-5-preview',
+      'laguna-s-2.1',
+      'longcat-2.5',
+    ],
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    defaultBaseUrl: ['https:', '', 'openrouter.ai', 'api', 'v1'].join('/'),
+    models: [
+      'anthropic/claude-opus-5.5',
+      'anthropic/claude-3.7-sonnet',
+      'deepseek/deepseek-r1',
+      'google/gemini-2.5-flash',
+      'google/gemini-2.5-pro',
+    ],
+  },
+  {
+    id: 'artbloom',
+    name: 'Artbloom Claude',
+    defaultBaseUrl: ['https:', '', 'api.artbloom.tech', 'v1'].join('/'),
+    models: ['claude-opus-5-5', 'claude-opus-5'],
+  },
   {
     id: 'anthropic',
     name: 'Anthropic Claude',
@@ -60,12 +101,6 @@ const PROVIDERS: ProviderOption[] = [
     defaultBaseUrl: ['http:', '', '127.0.0.1:11434'].join('/'),
     models: ['llama3.3:latest', 'qwen2.5-coder:latest', 'deepseek-r1:14b'],
   },
-  {
-    id: 'custom',
-    name: 'Custom OpenRouter / Proxy',
-    defaultBaseUrl: ['https:', '', 'openrouter.ai', 'api', 'v1'].join('/'),
-    models: ['anthropic/claude-3.7-sonnet', 'deepseek/deepseek-r1'],
-  },
 ]
 
 export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
@@ -75,13 +110,13 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
   onSelectModel,
   className = '',
 }) => {
-  const [selectedProviderId, setSelectedProviderId] = useState<string>('anthropic')
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('bynara')
   const [currentModel, setCurrentModel] = useState<string>(
-    activeModel || 'claude-3-7-sonnet-20250219'
+    activeModel || 'agnes-2.5-flash'
   )
-  const [apiKey, setApiKey] = useState('')
+  const [apiKey, setApiKey] = useState(() => getSystemKey('bynara'))
   const [showApiKey, setShowApiKey] = useState(false)
-  const [baseUrl, setBaseUrl] = useState(['https:', '', 'api.anthropic.com', 'v1'].join('/'))
+  const [baseUrl, setBaseUrl] = useState(['https:', '', 'router.bynara.id', 'v1'].join('/'))
   const [temperature, setTemperature] = useState<number>(0.7)
   const [contextWindow, setContextWindow] = useState<string>('128k')
   const [systemPrompt, setSystemPrompt] = useState('')
@@ -101,6 +136,10 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
   }, [activeModel])
 
   useEffect(() => {
+    const prov = PROVIDERS.find((p) => p.id === selectedProviderId)
+    const fallbackKey = getSystemKey(selectedProviderId) || prov?.defaultApiKey || ''
+    const fallbackUrl = prov?.defaultBaseUrl || ''
+
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         const storedKey = window.localStorage.getItem(`hermes_key_${selectedProviderId}`)
@@ -109,15 +148,18 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
         const storedCtx = window.localStorage.getItem('hermes_ctx')
         const storedPrompt = window.localStorage.getItem('hermes_system_prompt')
 
-        if (storedKey) setApiKey(storedKey)
-        if (storedUrl) setBaseUrl(storedUrl)
+        setApiKey(storedKey || fallbackKey)
+        setBaseUrl(storedUrl || fallbackUrl)
         if (storedTemp) setTemperature(parseFloat(storedTemp))
         if (storedCtx) setContextWindow(storedCtx)
         if (storedPrompt) setSystemPrompt(storedPrompt)
+        return
       } catch {
         void 0
       }
     }
+    setApiKey(fallbackKey)
+    setBaseUrl(fallbackUrl)
   }, [selectedProviderId])
 
   if (!isOpen) return null
@@ -126,7 +168,19 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
     setSelectedProviderId(provId)
     const prov = PROVIDERS.find((p) => p.id === provId)
     if (prov) {
-      setBaseUrl(prov.defaultBaseUrl)
+      let storedKey: string | null = null
+      let storedUrl: string | null = null
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          storedKey = window.localStorage.getItem(`hermes_key_${provId}`)
+          storedUrl = window.localStorage.getItem(`hermes_url_${provId}`)
+        } catch {
+          void 0
+        }
+      }
+      const fallbackKey = getSystemKey(provId) || prov.defaultApiKey || ''
+      setApiKey(storedKey || fallbackKey)
+      setBaseUrl(storedUrl || prov.defaultBaseUrl)
       if (prov.models.length > 0) {
         setCurrentModel(prov.models[0])
       }

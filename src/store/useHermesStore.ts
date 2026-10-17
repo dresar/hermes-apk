@@ -45,7 +45,7 @@ export interface HermesActions {
   setGatewayConfig: (config: Partial<GatewayConfig>) => void
   setConnectionStatus: (status: ConnectionStatus) => void
   setLatencyMs: (latencyMs: number) => void
-  setSessions: (sessions: Session[]) => void
+  setSessions: (sessions: Session[] | any) => void
   setActiveSessionId: (activeSessionId: string | null) => void
   setModels: (models: Model[]) => void
   setActiveModel: (activeModel: string | null) => void
@@ -135,7 +135,7 @@ export const useHermesStore = create<HermesStore>((set) => ({
   sessions: [],
   activeSessionId: null,
   models: [],
-  activeModel: null,
+  activeModel: 'agnes-2.5-flash',
   turns: [],
   activeTurnStreamingState: initialStreamingState,
   toolCalls: [],
@@ -158,7 +158,20 @@ export const useHermesStore = create<HermesStore>((set) => ({
 
   setLatencyMs: (latencyMs) => set({ latencyMs }),
 
-  setSessions: (sessions) => set({ sessions }),
+  setSessions: (sessions) =>
+    set({
+      sessions: Array.isArray(sessions)
+        ? sessions
+        : Array.isArray((sessions as any)?.sessions)
+        ? (sessions as any).sessions.map((s: any) => ({
+            session_id: s.session_id || s.id || '',
+            title: s.title || '',
+            created_at: s.started_at
+              ? new Date(s.started_at * 1000).toISOString()
+              : (s.created_at || ''),
+          }))
+        : [],
+    }),
 
   setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
 

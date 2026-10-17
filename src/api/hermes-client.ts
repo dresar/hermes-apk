@@ -883,11 +883,17 @@ export class HermesClient {
     return res
   }
 
-  public sessionList(params?: {
+  public async sessionList(params?: {
     limit?: number
     profile?: string
   }): Promise<Session[]> {
-    return this.sendRequest<Session[]>('session.list', params ?? {})
+    const res = await this.sendRequest<any>('session.list', params ?? {})
+    const rawList = Array.isArray(res) ? res : (res?.sessions ?? [])
+    return rawList.map((s: any) => ({
+      session_id: s.session_id || s.id || '',
+      title: s.title || '',
+      created_at: s.started_at ? new Date(s.started_at * 1000).toISOString() : (s.created_at || ''),
+    }))
   }
 
   public sessionEventsSince(
