@@ -15,6 +15,7 @@ import { PetPicker } from './components/PetPicker'
 import { GoalTracker } from './components/GoalTracker'
 import { RollbackSheet } from './components/RollbackSheet'
 import { VibeHearts } from './components/VibeHearts'
+import { UpdateModal } from './components/UpdateModal'
 
 const PRAISE_TRIGGERS = [
   'good bot',
@@ -51,25 +52,7 @@ export default function App() {
   const [providerSettingsOpen, setProviderSettingsOpen] = useState(false)
   const [goalsSheetOpen, setGoalsSheetOpen] = useState(false)
   const [rollbackSheetOpen, setRollbackSheetOpen] = useState(false)
-
-  useEffect(() => {
-    const handleViewport = () => {
-      if (!window.visualViewport) return
-      const height = window.visualViewport.height
-      document.documentElement.style.setProperty('--viewport-height', `${height}px`)
-    }
-
-    handleViewport()
-    window.visualViewport?.addEventListener('resize', handleViewport)
-    window.visualViewport?.addEventListener('scroll', handleViewport)
-    window.addEventListener('resize', handleViewport)
-
-    return () => {
-      window.visualViewport?.removeEventListener('resize', handleViewport)
-      window.visualViewport?.removeEventListener('scroll', handleViewport)
-      window.removeEventListener('resize', handleViewport)
-    }
-  }, [])
+  const [updateModalOpen, setUpdateModalOpen] = useState(false)
 
   useEffect(() => {
     const cfg = useHermesStore.getState().gatewayConfig
@@ -108,7 +91,7 @@ export default function App() {
 
   const handleCreateSession = useCallback(async () => {
     try {
-      const title = `Session ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      const title = `Sesi ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       const newSession = await hermesClient.sessionCreate({ title })
       if (newSession && newSession.session_id) {
         useHermesStore.getState().resetSessionState()
@@ -120,7 +103,7 @@ export default function App() {
       const fallbackId = `sess_${Date.now()}`
       const fallbackSession = {
         session_id: fallbackId,
-        title: 'New Session',
+        title: 'Sesi Baru',
         created_at: new Date().toISOString(),
       }
       useHermesStore.getState().resetSessionState()
@@ -141,7 +124,7 @@ export default function App() {
       if (!currentSid) {
         try {
           const newSession = await hermesClient.sessionCreate({
-            title: text.slice(0, 24) || 'New Session',
+            title: text.slice(0, 24) || 'Sesi Baru',
           })
           currentSid = newSession.session_id
           useHermesStore.getState().setActiveSessionId(currentSid)
@@ -217,7 +200,7 @@ export default function App() {
   }, [turns])
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#090a0b] text-[#f3f4f6]">
+    <div className="relative flex h-[100dvh] w-full flex-col min-h-0 overflow-hidden bg-[#090a0b] text-[#f3f4f6]">
       <VibeHearts text={lastTurnText} trigger={vibeHeartsActive} />
 
       <Header
@@ -234,9 +217,10 @@ export default function App() {
         onOpenVault={() => useHermesStore.getState().setVaultModalOpen(true)}
         onOpenGoals={() => setGoalsSheetOpen(true)}
         onOpenRollbacks={() => setRollbackSheetOpen(true)}
+        onOpenUpdateModal={() => setUpdateModalOpen(true)}
       />
 
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
         <Transcript
           turns={turns}
           streamingState={activeTurnStreamingState}
@@ -297,6 +281,11 @@ export default function App() {
         onRestore={handleRestoreCheckpoint}
       />
 
+      <UpdateModal
+        isOpen={updateModalOpen}
+        onClose={() => setUpdateModalOpen(false)}
+      />
+
       {goalsSheetOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-xs transition-opacity duration-200"
@@ -309,7 +298,7 @@ export default function App() {
             onClick={() => setGoalsSheetOpen(false)}
             aria-hidden="true"
           />
-          <div className="relative z-10 flex max-h-[85dvh] w-full flex-col rounded-t-2xl border-t border-[#23262d] bg-[#121316] shadow-2xl">
+          <div className="relative z-10 flex max-h-[85dvh] w-full flex-col rounded-t-2xl border-t border-[#23262d] bg-[#121316] shadow-2xl safe-area">
             <div className="flex h-5 w-full items-center justify-center pt-2">
               <div className="h-1 w-12 rounded-full bg-[#23262d]" />
             </div>
@@ -323,10 +312,10 @@ export default function App() {
                     id="goal-tracker-heading"
                     className="text-base font-medium tracking-tight text-[#f3f4f6]"
                   >
-                    Goals & Autonomous Loops
+                    Target & Loop Otonom
                   </h2>
                   <p className="text-xs text-[#9ca3af]">
-                    Track contracts, scheduled heartbeats, and daemon loops
+                    Pantau kontrak target dan loop daemon
                   </p>
                 </div>
               </div>
@@ -334,7 +323,7 @@ export default function App() {
                 type="button"
                 onClick={() => setGoalsSheetOpen(false)}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[#23262d] bg-[#1a1c20] text-[#9ca3af] hover:text-[#f3f4f6]"
-                aria-label="Close goals tracker"
+                aria-label="Tutup pelacak target"
               >
                 <X className="h-5 w-5" />
               </button>

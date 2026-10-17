@@ -636,9 +636,14 @@ export class HermesClient {
       const turnId = p?.turn_id ?? `turn_${Date.now()}`
       useHermesStore.getState().startStreaming(turnId)
       useHermesStore.getState().setPetState('review')
-    } else if (type === 'reasoning.delta') {
+    } else if (type === 'reasoning.delta' || type === 'thinking.delta') {
       const p = payload as Partial<ReasoningDeltaPayload> | undefined
-      const delta = p?.text ?? ''
+      const rec = payload as Record<string, unknown> | undefined
+      const delta =
+        (typeof payload === 'string' ? payload : undefined) ??
+        p?.text ??
+        (typeof rec?.delta === 'string' ? rec.delta : undefined) ??
+        (typeof rec?.thinking === 'string' ? rec.thinking : '')
       this.reasoningBuffer += delta
       useHermesStore.getState().appendReasoningDelta(delta)
       useHermesStore.getState().setPetState('review')
@@ -675,9 +680,14 @@ export class HermesClient {
       }
     } else if (type === 'message.complete') {
       const p = payload as Partial<MessageCompletePayload> | undefined
+      const rec = payload as Record<string, unknown> | undefined
+      const finalReasoning =
+        p?.reasoning ??
+        (typeof rec?.thinking === 'string' ? rec.thinking : undefined) ??
+        this.reasoningBuffer
       useHermesStore
         .getState()
-        .finishStreaming(p?.text ?? this.messageBuffer, p?.reasoning)
+        .finishStreaming(p?.text ?? this.messageBuffer, finalReasoning)
       useHermesStore.getState().setPetState('waving')
       if (this.petStateResetTimer) {
         clearTimeout(this.petStateResetTimer)
@@ -741,12 +751,48 @@ export class HermesClient {
     }
   }
 
-  public promptSubmit(
+  public async promptSubmit(
     sessionId: string,
     text: string,
     attachments?: Attachment[]
   ): Promise<unknown> {
     this.setActiveSessionId(sessionId)
+
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      const storeConfig = useHermesStore.getState().gatewayConfig
+      const host = storeConfig.host || this.currentConfig.host
+      const port = storeConfig.port || this.currentConfig.port
+      const useSsl =
+        storeConfig.useSsl !== undefined
+          ? storeConfig.useSsl
+          : this.currentConfig.useSsl
+      const token =
+        storeConfig.token ||
+        this.currentConfig.token ||
+        this.connectOptions.token
+
+      let timeoutTimer: ReturnType<typeof setTimeout> | undefined
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        timeoutTimer = setTimeout(() => {
+          reject(new Error('Connection timed out waiting for WebSocket to open'))
+        }, 3000)
+      })
+
+      const connectPromise = this.connect(host, port, {
+        ...this.connectOptions,
+        useSsl,
+        token,
+      })
+
+      try {
+        await Promise.race([connectPromise, timeoutPromise])
+      } finally {
+        if (timeoutTimer) {
+          clearTimeout(timeoutTimer)
+        }
+      }
+    }
+
     return this.sendRequest('prompt.submit', {
       session_id: sessionId,
       text,
