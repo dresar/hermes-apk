@@ -67,17 +67,23 @@ export default function App() {
     hermesClient
       .sessionList()
       .then((list) => {
-        if (Array.isArray(list) && list.length > 0) {
-          useHermesStore.getState().setSessions(list)
+        const raw = Array.isArray(list) ? list : (list as any)?.sessions
+        const validList = Array.isArray(raw) ? raw : []
+        if (validList.length > 0) {
+          useHermesStore.getState().setSessions(validList)
           const currentActive = useHermesStore.getState().activeSessionId
           if (!currentActive) {
-            const firstId = list[0].session_id
+            const firstId = validList[0].session_id
             useHermesStore.getState().setActiveSessionId(firstId)
             hermesClient.sessionResume(firstId).catch(() => {})
           }
+        } else {
+          useHermesStore.getState().setSessions([])
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        useHermesStore.getState().setSessions([])
+      })
 
     return () => {
       hermesClient.disconnect()
@@ -97,7 +103,8 @@ export default function App() {
         useHermesStore.getState().resetSessionState()
         useHermesStore.getState().setActiveSessionId(newSession.session_id)
         const updatedList = await hermesClient.sessionList()
-        useHermesStore.getState().setSessions(updatedList)
+        const raw = Array.isArray(updatedList) ? updatedList : (updatedList as any)?.sessions
+        useHermesStore.getState().setSessions(Array.isArray(raw) ? raw : [])
       }
     } catch {
       const fallbackId = `sess_${Date.now()}`
@@ -107,7 +114,10 @@ export default function App() {
         created_at: new Date().toISOString(),
       }
       useHermesStore.getState().resetSessionState()
-      useHermesStore.getState().setSessions([fallbackSession, ...sessions])
+      useHermesStore.getState().setSessions([
+        fallbackSession,
+        ...(Array.isArray(sessions) ? sessions : []),
+      ])
       useHermesStore.getState().setActiveSessionId(fallbackId)
     }
   }, [sessions])
@@ -129,7 +139,8 @@ export default function App() {
           currentSid = newSession.session_id
           useHermesStore.getState().setActiveSessionId(currentSid)
           const updatedList = await hermesClient.sessionList()
-          useHermesStore.getState().setSessions(updatedList)
+          const raw = Array.isArray(updatedList) ? updatedList : (updatedList as any)?.sessions
+          useHermesStore.getState().setSessions(Array.isArray(raw) ? raw : [])
         } catch {
           currentSid = `sess_${Date.now()}`
           useHermesStore.getState().setActiveSessionId(currentSid)
@@ -206,7 +217,7 @@ export default function App() {
       <Header
         connectionStatus={connectionStatus}
         latencyMs={latencyMs}
-        sessions={sessions}
+        sessions={Array.isArray(sessions) ? sessions : []}
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
         onCreateSession={handleCreateSession}

@@ -76,7 +76,8 @@ export const Header: React.FC<HeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const currentSession = sessions.find((s) => s.session_id === activeSessionId)
+  const sessionList = Array.isArray(sessions) ? sessions : []
+  const currentSession = sessionList.find((s) => s.session_id === activeSessionId)
   const displayTitle = currentSession?.title || 'Active Session'
 
   const isConnected = connectionStatus === 'connected'
@@ -126,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
             {sessionDropdownOpen && (
               <div className="absolute top-11 left-1/2 -translate-x-1/2 z-50 w-64 rounded-xl border border-[#23262d] bg-[#121316] p-1.5 shadow-2xl">
                 <div className="flex items-center justify-between px-2 py-1.5 text-[11px] font-medium text-[#9ca3af] border-b border-[#23262d]">
-                  <span>Sesi ({sessions.length})</span>
+                  <span>Sesi ({sessionList.length})</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -139,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
                 <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
-                  {sessions.map((s) => {
+                  {sessionList.map((s) => {
                     const isSelected = s.session_id === activeSessionId
                     return (
                       <button
@@ -268,7 +269,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {showSessionList && (
                   <div className="border-t border-[#23262d] bg-[#121316] p-2 space-y-1 max-h-48 overflow-y-auto">
-                    {sessions.map((s) => {
+                    {sessionList.map((s) => {
                       const isSelected = s.session_id === activeSessionId
                       return (
                         <button
