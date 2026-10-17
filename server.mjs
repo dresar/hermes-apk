@@ -59,12 +59,36 @@ async function fetchSessionToken() {
   return cachedToken;
 }
 
+async function loadSystemProviderKeys() {
+  const keys = { bynara: '', openrouter: '', artbloom: '' };
+  try {
+    const yamlContent = await fs.promises.readFile('/opt/data/config.yaml', 'utf-8');
+    const bynaraMatch = yamlContent.match(new RegExp('api_key:\\s*([^\\s\\r\\n]+)'));
+    if (bynaraMatch) keys.bynara = bynaraMatch[1];
+    const orMatch = yamlContent.match(new RegExp('openrouter:[\\s\\S]*?api_key:\\s*([^\\s\\r\\n]+)'));
+    if (orMatch) keys.openrouter = orMatch[1];
+    const abMatch = yamlContent.match(new RegExp('artbloom:[\\s\\S]*?api_key:\\s*([^\\s\\r\\n]+)'));
+    if (abMatch) keys.artbloom = abMatch[1];
+  } catch (e) {
+  }
+  if (!keys.artbloom) {
+    try {
+      const envContent = await fs.promises.readFile('/opt/data/.env', 'utf-8');
+      const abEnvMatch = envContent.match(new RegExp('ARTBLOOM_API_KEY=([^\\s\\r\\n]+)'));
+      if (abEnvMatch) keys.artbloom = abEnvMatch[1];
+    } catch (e) {
+    }
+  }
+  return keys;
+}
+
 async function serveIndexHtml(res, method) {
   const indexPath = path.join(DIST_DIR, 'index.html');
   try {
     let html = await fs.promises.readFile(indexPath, 'utf-8');
     const token = await fetchSessionToken();
-    const script = `<script>window.__HERMES_SESSION_TOKEN__="${token}";window.__HERMES_AUTH_REQUIRED__=false;</script>`;
+    const systemKeys = await loadSystemProviderKeys();
+    const script = `<script>window.__HERMES_SESSION_TOKEN__="${token}";window.__HERMES_AUTH_REQUIRED__=false;window.__HERMES_SYSTEM_KEYS__=${JSON.stringify(systemKeys)};</script>`;
     if (html.includes('</head>')) {
       html = html.replace('</head>', `${script}</head>`);
     } else {
