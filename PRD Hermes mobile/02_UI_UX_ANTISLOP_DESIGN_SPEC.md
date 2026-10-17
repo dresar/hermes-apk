@@ -1,4 +1,4 @@
-# SPECIFICATION 02: UI/UX & ANTI-SLOP DESIGN STANDARD
+# SPECIFICATION 02: UI/UX, ANTI-SLOP STANDARDS & THE 5,086 PETDEX MASCOT SYSTEM
 
 ## 1. Design Direction & Anti-Slop Principles
 
@@ -37,79 +37,99 @@ A developer-focused dark palette optimized for OLED displays and long sessions:
 
 ---
 
-## 3. Typography & Sizing
+## 3. The 5,086 Petdex Mascot System
 
-Fluid typography responding to viewport scale without arbitrary breakpoints:
+Hermes Agent incorporates a complete living companion system with **5,086 verified pets** sourced from the Petdex catalog (`https://petdex.dev/api/manifest`). The mobile app provides a dedicated companion canvas rendering the active mascot and syncing animations to real-time agent execution states.
 
-```css
-:root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
-
-  --text-xs: clamp(0.70rem, 0.65rem + 0.25vw, 0.75rem);
-  --text-sm: clamp(0.80rem, 0.75rem + 0.25vw, 0.875rem);
-  --text-base: clamp(0.90rem, 0.85rem + 0.25vw, 1.00rem);
-  --text-lg: clamp(1.05rem, 0.98rem + 0.35vw, 1.15rem);
-  --text-xl: clamp(1.20rem, 1.10rem + 0.50vw, 1.35rem);
-}
+```text
+┌────────────────────────────────────────────────────────┐
+│               PETDEX SPRITESHEET ATLAS                 │
+│               Total Size: 1536 × 1872 px               │
+│               8 Columns × 9 Rows                       │
+├─────────┬───────────────────┬──────────────────────────┤
+│ Row 0   │ idle              │ Resting / neutral state  │
+│ Row 1   │ running-right     │ Autonomous walking right │
+│ Row 2   │ running-left      │ Autonomous walking left  │
+│ Row 3   │ waving / wave     │ Greeting / turn complete │
+│ Row 4   │ jumping / jump    │ Celebration / success    │
+│ Row 5   │ failed            │ Tool error / exception   │
+│ Row 6   │ waiting           │ Awaiting user approval   │
+│ Row 7   │ running / run     │ Tool execution active    │
+│ Row 8   │ review            │ Reasoning / thinking     │
+└─────────┴───────────────────┴──────────────────────────┘
 ```
+
+### 3.1 Sprite Geometry & Frame Stepper Engine
+- **Cell Size**: `192px × 208px`.
+- **Frames per Animation**: 6 frames per row (columns 0 through 5).
+- **Cycle Duration**: `1100ms` (~183ms per frame), stepped via `requestAnimationFrame`.
+- **Display Scale**: Scaled down by default (`scale = 0.33` produces an effective size of `~63px × 68px`).
+- **Interactive State Binding**:
+  - Agent state `thinking` (emitting `reasoning.delta`) ➔ Row 8 (`review`).
+  - Agent state `executing` (emitting `tool.start`) ➔ Row 7 (`running`).
+  - Agent state `approval_required` (waiting on user) ➔ Row 6 (`waiting`).
+  - Agent state `idle` (ready for input) ➔ Row 0 (`idle`) with periodic roaming.
+  - Turn completed successfully ➔ Row 3 (`waving`) for 2 seconds.
+  - Tool execution error ➔ Row 5 (`failed`) for 3 seconds.
+
+### 3.2 Two-Phase Gallery & 96px Thumbnail Optimization
+Loading all 5,086 WebP spritesheets on mobile would cause extreme memory exhaustion. The mobile client follows Hermes's two-phase loading protocol:
+1. **Phase 1 (Instant Local Render)**: Calls `pet.gallery({ localOnly: true })` to populate installed pets immediately from device cache.
+2. **Phase 2 (Lazy-Loaded Catalog)**: Fetches `https://petdex.dev/api/manifest` in the background. The Pet Gallery Grid renders lightweight **96px base64 thumbnails** requested via `pet.thumb({ slug, url })` (or cropped client-side from frame 0).
+3. **Mascot Selection**: Tapping a pet calls `pet.select({ slug })`, downloading the full spritesheet to local storage and updating the active companion.
+
+### 3.3 Affection Vibe Reactions (Floating Hearts)
+When the user sends praise or affection in chat (e.g. *"good bot"*, *"thank you"*, *"nice job"*, *"<3"*), the client detects the event or receives server event `reaction: { kind: "hearts" }`. The pet displays an animated burst of floating pixel hearts over the canvas!
 
 ---
 
-## 4. Mobile Component Specifications
+## 4. Mobile Layout & Screen Architecture
 
-### 4.1 Buttons & Interactive Controls
-- **Height**: 34px to 38px (compact density).
-- **Corner Radius**: `rounded-md` (6px) to `rounded-lg` (8px). Never pill (`rounded-full`).
-- **Touch Padding**: Minimum 44px × 44px invisible tap target container via touch-action padding.
-- **Active State**: Micro-scale transition `active:scale-[0.98]` with instantaneous 100ms spring release.
-- **Focus Outline**: 2px solid `#ff6347` with 2px offset for keyboard accessibility (R-32).
+### 4.1 Dynamic Viewport & Safe-Area Bounds
+Mobile keyboards frequently push input bars off-screen. The app binds its root container to `window.visualViewport`:
+```css
+.app-container {
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+```
 
-### 4.2 Top Navigation Bar (Floating Glass Bar)
-- **Position**: Sticky top with `z-index: 40`.
-- **Styling**: `backdrop-blur-md bg-[#090a0b]/80 border-b border-[#23262d]`.
-- **Elements**:
-  - Left: Gateway Status Indicator (Green/Red dot + Server Name).
-  - Center: Session Picker Dropdown with search filter.
-  - Right: Active Model Chip (e.g. `hermes (high)`). Tapping opens Model Bottom Sheet.
+### 4.2 Top Floating Navigation Bar
+- **Styling**: `backdrop-blur-md bg-[#090a0b]/80 border-b border-[#23262d] px-4 py-2.5 flex items-center justify-between`.
+- **Left**: Active Gateway status dot (Green = connected, Red = disconnected) + server latency badge (`24ms`).
+- **Center**: Active Session Title with tap-to-open session switcher drawer.
+- **Right**: Active Pet Mascot Canvas (`44px` tap target to open Pet Gallery) + Model Chip (e.g. `hermes (high)`).
 
-### 4.3 Streaming Transcript Area
+### 4.3 Streaming Transcript Feed
 - **Container**: `flex-1 overflow-y-auto px-4 py-3 space-y-4`.
-- **Turns**:
-  - **User Turn**: Right-aligned, `bg-[#1a1c20] text-[#f3f4f6] rounded-lg p-3 max-w-[85%] border border-[#23262d]`.
-  - **Assistant Turn**: Full-width or left-aligned, `bg-transparent text-[#f3f4f6] py-1`.
-  - **Thinking / Reasoning Section**: Collapsible drawer with subtle left border (`border-l-2 border-[#323640] pl-3 py-1 text-xs text-[#9ca3af] italic`).
-  - **Tool Execution Card**: Inline monospace block showing tool name, arguments, and expandable standard output.
-- **Scroll Behavior**: Auto-pins to bottom during active token stream; unpins if user scrolls up to read history.
+- **User Turn**: Compact card aligned right, `bg-[#1a1c20] text-[#f3f4f6] rounded-lg p-3 max-w-[85%] border border-[#23262d]`.
+- **Assistant Turn**: Clean left-aligned container with Markdown rendering.
+- **Collapsible Reasoning Card**:
+  ```html
+  <details class="bg-[#121316] border border-[#23262d] rounded-md p-3 text-xs text-[#9ca3af]">
+    <summary class="cursor-pointer font-medium text-[#f3f4f6]">Thought Process (Streaming...)</summary>
+    <div class="mt-2 font-mono whitespace-pre-wrap">{reasoningText}</div>
+  </details>
+  ```
+- **Inline Tool Execution Card**:
+  Monospace card displaying tool name (e.g. `run_command`), arguments, execution spinner, and expandable stdout block.
 
-### 4.4 Live Background Activity Strip
-- Rendered directly above the composer when background tasks or delegated subagents are active:
-- **Styling**: `bg-[#121316] border-t border-[#23262d] px-4 py-2 flex items-center justify-between`.
-- **Content**: Running icon, command string (e.g. `npm run test`), streaming output tail, Stop button.
+### 4.4 Interactive Server Request Modals
+1. **Approval Modal (Dangerous Actions)**:
+   - Triggered by `approval` server request.
+   - Shows high-visibility warning banner, command text, and animated **300-second countdown bar**.
+   - Actions: `Allow Once`, `Allow for Session`, `Allow Always`, `Deny`.
+2. **Clarify Modal (Structured Questions)**:
+   - Triggered by `clarify` server request.
+   - Renders interactive selection chips for multi-choice agent questions with single-tap answer submission.
 
 ### 4.5 Bottom Input Composer
-- **Position**: Sticky bottom with safe-area padding (`pb-[env(safe-area-inset-bottom)]`).
-- **Styling**: `bg-[#090a0b] border-t border-[#23262d] p-3`.
-- **Input Field**: Auto-expanding textarea (1 to 5 lines), `bg-[#121316] text-[#f3f4f6] rounded-md px-3 py-2 text-sm border border-[#23262d] focus:border-[#ff6347] focus:outline-none`.
-- **Action Buttons**:
-  - File / Photo Attachment icon button (`44px` tap target).
-  - Voice Recording / Dictation button.
-  - Send / Stop toggle button: Changes to red square Stop button while generation is active.
-
-### 4.6 Model Switcher Bottom Sheet
-- **Modal Container**: Slides from bottom, `bg-[#121316] rounded-t-xl border-t border-[#23262d] max-h-[85dvh] p-5`.
-- **Model List**: Radio cards displaying model identifier, context limit, and provider badge.
-- **Thinking Level Segment**: Stepped selector (`None`, `Low`, `Med`, `High`, `Max`).
-- **Safety Confirmation**: If switching resets active session context, display explicit prompt: *"Switching to [Model] will branch or clear current context. Continue?"* with Cancel and Confirm buttons.
-
-### 4.7 Gateway Connection Vault & API Keys Screen
-- **Gateways List**: Card list of saved gateways with ping latency badge (e.g. `24ms`), active checkmark, and delete action.
-- **Add Gateway Form**:
-  - Server URL input (`http://100.x.y.z:9119` or `https://...`).
-  - Username input.
-  - Password input (masked).
-  - Test Connection button with immediate HTTP probe.
-- **AI Provider Key Manager**:
-  - Provider Selector: Custom Proxy, OpenAI, Anthropic, Ollama.
-  - Custom Base URL input (e.g. `http://127.0.0.1:20128/v1`).
-  - API Key input.
+- **Input Area**: Auto-growing textarea (1 to 4 lines), `bg-[#121316] text-[#f3f4f6] rounded-md px-3 py-2 text-sm border border-[#23262d]`.
+- **Controls**:
+  - File / Photo Attachment button (`44px` touch target).
+  - Voice Push-to-Talk recording button with live audio waveform.
+  - Send / Stop button: Instantly swaps to red Stop square while turn is generating.

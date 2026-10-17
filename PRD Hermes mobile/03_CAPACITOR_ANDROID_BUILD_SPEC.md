@@ -4,14 +4,15 @@
 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Language** | TypeScript 5.8+ | End-to-end type safety for JSON-RPC payloads and UI state |
+| **Language** | TypeScript 5.8+ | End-to-end type safety for JSON-RPC payloads, pets, and UI state |
 | **Frontend Framework** | React 19 (`.tsx`) | Component hierarchy, virtualized message feeds, hooks |
 | **Styling** | Tailwind CSS v4 | Lightweight utility styles adhering to Anti-Slop tokens |
 | **Icons** | Lucide React | Clean, scalable monospace and interface icons |
 | **Build Tool** | Vite 6 | Sub-second HMR and production bundle optimization |
 | **Mobile Runtime** | Capacitor 7 | Native Android shell, Web-to-Native bridge, APK packaging |
-| **Storage Plugin** | `@capacitor/preferences` | Android `EncryptedSharedPreferences` for gateway credentials |
+| **Storage Plugin** | `@capacitor/preferences` | Android `EncryptedSharedPreferences` for gateway credentials & pets |
 | **Notification Plugin**| `@capacitor/local-notifications`| Native status alerts for background turn completion |
+| **Haptics Plugin** | `@capacitor/haptics` | Subtle physical feedback on button taps and approvals |
 
 ---
 
@@ -26,21 +27,26 @@ hermes-mobile/
 │   └── gradlew
 ├── src/
 │   ├── api/
-│   │   ├── hermes-client.ts        # Typed HTTP & WebSocket client
-│   │   ├── jsonrpc.ts              # JSON-RPC 2.0 message envelope
-│   │   └── types.ts                # Session, Model, Token, Approval types
+│   │   ├── hermes-client.ts        # Typed HTTP & WebSocket client (tui_gateway)
+│   │   ├── jsonrpc.ts              # JSON-RPC 2.0 message envelope & batching
+│   │   ├── petdex-api.ts           # Manifest fetcher & thumbnail cropper
+│   │   └── types.ts                # Session, Model, Pet, Approval, Request types
 │   ├── components/
 │   │   ├── Header.tsx              # Floating top bar, session & model chips
 │   │   ├── Transcript.tsx          # Virtualized message list, code highlighting
 │   │   ├── MessageTurn.tsx         # User & Assistant turn renderers
-│   │   ├── ThinkingBlock.tsx       # Collapsible reasoning drawer
+│   │   ├── ThinkingDrawer.tsx      # Collapsible reasoning drawer (reasoning.delta)
 │   │   ├── ToolCallCard.tsx        # Inline tool output & status indicator
 │   │   ├── Composer.tsx            # Bottom input bar, dictation, attachments
-│   │   ├── BackgroundStrip.tsx     # Running background processes panel
-│   │   ├── ModelSheet.tsx          # Model switcher & thinking level bottom sheet
+│   │   ├── PetSprite.tsx           # 8x9 Canvas sprite stepper engine
+│   │   ├── PetPicker.tsx           # 5,086 Petdex search & gallery bottom sheet
+│   │   ├── VibeHearts.tsx          # Affection reaction floating hearts canvas
+│   │   ├── ApprovalModal.tsx       # Dangerous action authorization with 300s timer
+│   │   ├── ClarifyModal.tsx        # Multi-choice question answering chips
+│   │   ├── GoalTracker.tsx         # Autonomous goal tree & loop monitor
+│   │   ├── RollbackSheet.tsx       # Pre-mutation Git checkpoints & restore
 │   │   ├── GatewayVault.tsx        # Multi-gateway connection manager
-│   │   ├── ProviderSettings.tsx    # Custom AI provider & key settings form
-│   │   └── ApprovalModal.tsx       # Confirmation dialog for dangerous actions
+│   │   └── ProviderSettings.tsx    # Custom AI provider & key settings form
 │   ├── store/
 │   │   └── useHermesStore.ts       # Unified Zustand / reactive state store
 │   ├── App.tsx                     # Main layout & routing shell
@@ -129,7 +135,7 @@ Run these commands in order to build `HERMES.APK`:
 ### Step 1: Install Dependencies
 ```bash
 npm install
-npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/preferences @capacitor/local-notifications @capacitor/status-bar @capacitor/network lucide-react clsx tailwind-merge zustand
+npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/preferences @capacitor/local-notifications @capacitor/status-bar @capacitor/network @capacitor/haptics lucide-react clsx tailwind-merge zustand
 ```
 
 ### Step 2: Build Web Production Bundle
