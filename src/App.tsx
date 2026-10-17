@@ -57,7 +57,7 @@ export default function App() {
   useEffect(() => {
     const cfg = useHermesStore.getState().gatewayConfig
     hermesClient
-      .connect(cfg.host || '127.0.0.1', cfg.port || 9119, {
+      .connect(cfg.host || 'hermes.agentai.my.id', cfg.port || 443, {
         useSsl: cfg.useSsl,
         token: cfg.token,
         autoReconnect: true,

@@ -61,9 +61,7 @@ export class HermesClient {
   >()
   private statusListeners = new Set<(status: ConnectionStatus) => void>()
   private currentConfig: GatewayConfig = {
-    host: 'hermes.agentai.my.id',
-    port: 443,
-    useSsl: true,
+    ...useHermesStore.getState().gatewayConfig,
   }
   private connectOptions: ConnectOptions = {}
   private isManualDisconnect = false
@@ -96,18 +94,17 @@ export class HermesClient {
     username: string,
     password: string
   ): Promise<{ ok: boolean; next?: string }> {
+    const isBrowser = typeof window !== 'undefined' && Boolean(window.location)
+    const isSameHost =
+      isBrowser && window.location.hostname === this.currentConfig.host
     const protocol = this.currentConfig.useSsl ? 'https:' : 'http:'
     const hostPart =
       this.currentConfig.port === 443 || this.currentConfig.port === 80
         ? this.currentConfig.host
         : `${this.currentConfig.host}:${this.currentConfig.port}`
-    const url = [
-      protocol,
-      '',
-      hostPart,
-      'auth',
-      'password-login',
-    ].join('/')
+    const url = isSameHost
+      ? '/auth/password-login'
+      : [protocol, '', hostPart, 'auth', 'password-login'].join('/')
 
     const response = await fetch(url, {
       method: 'POST',
@@ -139,19 +136,17 @@ export class HermesClient {
   }
 
   public async getWsTicket(): Promise<{ ticket: string; ttl_seconds: number }> {
+    const isBrowser = typeof window !== 'undefined' && Boolean(window.location)
+    const isSameHost =
+      isBrowser && window.location.hostname === this.currentConfig.host
     const protocol = this.currentConfig.useSsl ? 'https:' : 'http:'
     const hostPart =
       this.currentConfig.port === 443 || this.currentConfig.port === 80
         ? this.currentConfig.host
         : `${this.currentConfig.host}:${this.currentConfig.port}`
-    const url = [
-      protocol,
-      '',
-      hostPart,
-      'api',
-      'auth',
-      'ws-ticket',
-    ].join('/')
+    const url = isSameHost
+      ? '/api/auth/ws-ticket'
+      : [protocol, '', hostPart, 'api', 'auth', 'ws-ticket'].join('/')
 
     const response = await fetch(url, {
       method: 'POST',
@@ -172,13 +167,27 @@ export class HermesClient {
   }
 
   public async bootstrapTokenIfMissing(): Promise<string | null> {
+    if (typeof window !== 'undefined') {
+      const injectedToken = (
+        window as unknown as { __HERMES_SESSION_TOKEN__?: string }
+      ).__HERMES_SESSION_TOKEN__
+      if (injectedToken) {
+        this.currentConfig.token = injectedToken
+        useHermesStore.getState().setGatewayConfig({ token: injectedToken })
+        return injectedToken
+      }
+    }
+
     try {
+      const isBrowser = typeof window !== 'undefined' && Boolean(window.location)
+      const isSameHost =
+        isBrowser && window.location.hostname === this.currentConfig.host
       const protocol = this.currentConfig.useSsl ? 'https:' : 'http:'
       const hostPart =
         this.currentConfig.port === 443 || this.currentConfig.port === 80
           ? this.currentConfig.host
           : `${this.currentConfig.host}:${this.currentConfig.port}`
-      const url = [protocol, '', hostPart, ''].join('/')
+      const url = isSameHost ? '/' : [protocol, '', hostPart, ''].join('/')
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'HermesMobile/1.0',
@@ -218,6 +227,13 @@ export class HermesClient {
     }
     if (options?.token) {
       this.currentConfig.token = options.token
+    } else if (!this.currentConfig.token && typeof window !== 'undefined') {
+      const injectedToken = (
+        window as unknown as { __HERMES_SESSION_TOKEN__?: string }
+      ).__HERMES_SESSION_TOKEN__
+      if (injectedToken) {
+        this.currentConfig.token = injectedToken
+      }
     }
     this.connectOptions = options ?? {}
 
