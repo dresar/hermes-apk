@@ -76,9 +76,9 @@ export interface HermesActions {
 export type HermesStore = HermesState & HermesActions
 
 const initialConfig: GatewayConfig = {
-  host: '127.0.0.1',
-  port: 9119,
-  useSsl: false,
+  host: 'hermes.agentai.my.id',
+  port: 443,
+  useSsl: true,
 }
 
 const initialActivePet: ActivePet = {
