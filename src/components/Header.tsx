@@ -96,99 +96,101 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-30 flex h-14 w-full items-center justify-between border-b border-[#23262d] bg-[#090a0b]/80 px-3 sm:px-4 backdrop-blur-md safe-area ${className}`}
+        className={`fixed top-0 left-0 right-0 z-30 flex h-14 w-full items-center border-b border-[#23262d] bg-[#090a0b]/80 backdrop-blur-md safe-area ${className}`}
       >
-        <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${statusColorClass}`} />
-          <span className="font-semibold text-sm tracking-tight text-[#f3f4f6]">
-            Hermes
-          </span>
-          {isConnected && (
-            <span className="rounded-md border border-[#23262d] bg-[#121316] px-1.5 py-0.5 font-mono text-[10px] text-[#9ca3af]">
-              {latencyMs}ms
+        <div className="max-w-3xl mx-auto w-full flex items-center justify-between px-3 sm:px-4">
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${statusColorClass}`} />
+            <span className="font-semibold text-sm tracking-tight text-[#f3f4f6]">
+              Hermes
             </span>
-          )}
-        </div>
-
-        <div ref={sessionDropdownRef} className="relative flex items-center justify-center">
-          <button
-            type="button"
-            onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
-            className="flex min-h-[36px] max-w-[130px] sm:max-w-[180px] items-center gap-1.5 rounded-full border border-[#23262d] bg-[#121316] px-3 py-1 text-xs text-[#f3f4f6] transition-colors hover:border-[#323640] hover:bg-[#1a1c20] cursor-pointer"
-            aria-label="Pilih sesi percakapan"
-            aria-expanded={sessionDropdownOpen}
-          >
-            <span className="truncate font-medium">{displayTitle}</span>
-            <ChevronDown className="h-3 w-3 shrink-0 text-[#9ca3af]" />
-          </button>
-
-          {sessionDropdownOpen && (
-            <div className="absolute top-11 left-1/2 -translate-x-1/2 z-50 w-64 rounded-xl border border-[#23262d] bg-[#121316] p-1.5 shadow-2xl">
-              <div className="flex items-center justify-between px-2 py-1.5 text-[11px] font-medium text-[#9ca3af] border-b border-[#23262d]">
-                <span>Sesi ({sessions.length})</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSessionDropdownOpen(false)
-                    onCreateSession()
-                  }}
-                  className="text-[#ff6347] hover:underline"
-                >
-                  + Sesi Baru
-                </button>
-              </div>
-              <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
-                {sessions.map((s) => {
-                  const isSelected = s.session_id === activeSessionId
-                  return (
-                    <button
-                      key={s.session_id}
-                      type="button"
-                      onClick={() => {
-                        onSelectSession(s.session_id)
-                        setSessionDropdownOpen(false)
-                      }}
-                      className={`flex min-h-[40px] w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'border border-[#ff6347]/40 bg-[#ff6347]/10 text-[#ff6347]'
-                          : 'text-[#9ca3af] hover:bg-[#1a1c20] hover:text-[#f3f4f6]'
-                      }`}
-                    >
-                      <span className="truncate font-medium">
-                        {s.title || 'Sesi Tanpa Judul'}
-                      </span>
-                      {isSelected && (
-                        <Check className="h-3.5 w-3.5 shrink-0 text-[#ff6347]" />
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center">
-            <PetSprite
-              slug={activePet.slug}
-              name={activePet.name}
-              spritesheetUrl={activePet.spritesheetUrl}
-              state={mapPetAnimationState(activePet.state)}
-              scale={0.2}
-              onClick={onOpenPetPicker}
-              className="rounded-lg border border-[#23262d] bg-[#121316] cursor-pointer"
-            />
+            {isConnected && (
+              <span className="rounded-md border border-[#23262d] bg-[#121316] px-1.5 py-0.5 font-mono text-[10px] text-[#9ca3af]">
+                {latencyMs}ms
+              </span>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-[#23262d] bg-[#121316] text-[#9ca3af] hover:border-[#323640] hover:text-[#f3f4f6] cursor-pointer transition-colors"
-            aria-label="Buka menu Hermes"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
+          <div ref={sessionDropdownRef} className="relative flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
+              className="flex min-h-[36px] max-w-[130px] sm:max-w-[180px] items-center gap-1.5 rounded-full border border-[#23262d] bg-[#121316] px-3 py-1 text-xs text-[#f3f4f6] transition-colors hover:border-[#323640] hover:bg-[#1a1c20] cursor-pointer"
+              aria-label="Pilih sesi percakapan"
+              aria-expanded={sessionDropdownOpen}
+            >
+              <span className="truncate font-medium">{displayTitle}</span>
+              <ChevronDown className="h-3 w-3 shrink-0 text-[#9ca3af]" />
+            </button>
+
+            {sessionDropdownOpen && (
+              <div className="absolute top-11 left-1/2 -translate-x-1/2 z-50 w-64 rounded-xl border border-[#23262d] bg-[#121316] p-1.5 shadow-2xl">
+                <div className="flex items-center justify-between px-2 py-1.5 text-[11px] font-medium text-[#9ca3af] border-b border-[#23262d]">
+                  <span>Sesi ({sessions.length})</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSessionDropdownOpen(false)
+                      onCreateSession()
+                    }}
+                    className="text-[#ff6347] hover:underline"
+                  >
+                    + Sesi Baru
+                  </button>
+                </div>
+                <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
+                  {sessions.map((s) => {
+                    const isSelected = s.session_id === activeSessionId
+                    return (
+                      <button
+                        key={s.session_id}
+                        type="button"
+                        onClick={() => {
+                          onSelectSession(s.session_id)
+                          setSessionDropdownOpen(false)
+                        }}
+                        className={`flex min-h-[40px] w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'border border-[#ff6347]/40 bg-[#ff6347]/10 text-[#ff6347]'
+                            : 'text-[#9ca3af] hover:bg-[#1a1c20] hover:text-[#f3f4f6]'
+                        }`}
+                      >
+                        <span className="truncate font-medium">
+                          {s.title || 'Sesi Tanpa Judul'}
+                        </span>
+                        {isSelected && (
+                          <Check className="h-3.5 w-3.5 shrink-0 text-[#ff6347]" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center">
+              <PetSprite
+                slug={activePet.slug}
+                name={activePet.name}
+                spritesheetUrl={activePet.spritesheetUrl}
+                state={mapPetAnimationState(activePet.state)}
+                scale={0.2}
+                onClick={onOpenPetPicker}
+                className="rounded-lg border border-[#23262d] bg-[#121316] cursor-pointer"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-[#23262d] bg-[#121316] text-[#9ca3af] hover:border-[#323640] hover:text-[#f3f4f6] cursor-pointer transition-colors"
+              aria-label="Buka menu Hermes"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
 

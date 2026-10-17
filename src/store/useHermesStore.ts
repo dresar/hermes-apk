@@ -75,11 +75,43 @@ export interface HermesActions {
 
 export type HermesStore = HermesState & HermesActions
 
-const initialConfig: GatewayConfig = {
-  host: 'hermes.agentai.my.id',
-  port: 443,
-  useSsl: true,
+const getInitialGatewayConfig = (): GatewayConfig => {
+  const isBrowser = typeof window !== 'undefined' && Boolean(window.location)
+  const sessionToken = isBrowser
+    ? (window as unknown as { __HERMES_SESSION_TOKEN__?: string }).__HERMES_SESSION_TOKEN__
+    : undefined
+
+  if (isBrowser && window.location.hostname) {
+    const hostname = window.location.hostname
+    const isLocalhost =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0'
+    const isCapacitor =
+      window.location.protocol === 'capacitor:' ||
+      window.location.protocol === 'ionic:'
+
+    if (!isLocalhost && !isCapacitor) {
+      const isHttps = window.location.protocol === 'https:'
+      const port = isHttps ? 443 : Number(window.location.port) || 80
+      return {
+        host: hostname,
+        port,
+        useSsl: isHttps,
+        token: sessionToken || undefined,
+      }
+    }
+  }
+
+  return {
+    host: 'hermes.agentai.my.id',
+    port: 443,
+    useSsl: true,
+    token: sessionToken || undefined,
+  }
 }
+
+const initialConfig: GatewayConfig = getInitialGatewayConfig()
 
 const initialActivePet: ActivePet = {
   slug: 'default',
